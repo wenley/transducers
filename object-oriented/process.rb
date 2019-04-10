@@ -1,17 +1,67 @@
 
+# Problem with this implementation:
+# - Can't start building a process until you have a base process to build on top of
+# - Function composition starts at the bottom of the stack
+class Process
+  def initialize(completion: nil, step:, init:, inner_process:)
+    @step = step
+    @init = init
+    @completion = completion || DEFAULT_COMPLETION
+    @inner_process = inner_process
+  end
+  attr_reader :completion, :step, :init, :inner_process
 
-module Transducers
-  class Process
-    def initialize(completion: nil, step:, init:)
-      @step = step
-      @init = init
-      @completion = completion || DEFAULT_COMPLETION
+  include ExtendibleProcess
+
+  # Placeholder for
+  class BaseProcess
+    def initialize
+      @step = nil
+      @init = nil
+      @completion = DEFAULT_COMPLETION
     end
     attr_reader :completion, :step, :init
 
-    DEFAULT_COMPLETION = proc { |value| value }
-    DEFAULT_INITIAL_STATE = proc { {} }
+    include ExtendibleProcess
 
+    def apply_to(seed:, step_function:, outermost: true)
+      self.init = proc { seed }
+      self.step = step_function
+
+      if outermost
+        return ConcreteProcess(self)
+      end
+    end
+  end
+
+  class ConcreteProcess
+    def initialize(process)
+      @step = process.step
+      @init = process.init
+      @completion = process.completion || DEFAULT_COMPLETION
+    end
+    attr_reader :completion, :step, :init
+
+    def apply
+
+    end
+  end
+
+  def self.base_process
+
+  end
+
+  def apply_to(seed:, step_function:, outermost: true)
+    inner_class.apply_to(seed: seed, step_function: step_function, outermost: false)
+
+    if outermost
+      return ConcreteProcess(self)
+    end
+  end
+
+  DEFAULT_COMPLETION = proc { |value| value }
+
+  module ExtendibleProcess
     def mapping(&operation)
       Process.new(
         completion: completion,
@@ -108,91 +158,4 @@ module Transducers
       )
     end
   end
-
-  # To be included on Transducible types
-  module Transducible
-    def transduce(process, seed: nil, output_class: nil, step_function: nil)
-      output_class ||= self.class
-      seed ||= output_class.default_seed
-      step_function ||= seed.method(:step)
-
-      result = process.init.call
-
-      process =
-
-      self.each do |value|
-        break if result.is_a?(ReducedValue)
-        result = process.step.call(result, value)
-      end
-
-      if result.is_a?(ReducedValue)
-        final_result = result.value
-      else
-        final_result = result
-      end
-
-      process.complete(final_result)
-    end
-
-    def default_seed
-      raise NotImplementedError
-    end
-
-    def step(result, value)
-      raise NotImplementedError
-    end
-  end
-
-  ReducedValue = Struct.new(:value)
 end
-
-module Transducible
-  def step(collection, value)
-    collection
-  end
-
-  def default_seed
-  end
-
-  def transduce(operation, step_function, seed, input_collection)
-    input_collection
-  end
-end
-
-class Array
-  include Transducible
-
-  def step(value)
-    self << value
-    self
-  end
-
-  def self.default_seed
-    []
-  end
-
-  def transduce(output_transducible_class: nil, seed: nil, step_function: nil, &operation)
-    output_transducible_class ||= self.class
-    seed ||= output_transducible_class.default_seed
-    step_function ||= seed.method(:step)
-
-    state = operation
-
-    self.each do |value|
-      yield(value, step_function, state)
-    end
-  end
-end
-
-# Ideal usage:
-
-baggage_process = Transducers.base_process.
-  flat_mapping { |pallet| pallet.bags }.
-  filtering { |bag| bag.non_food? }.
-  mapping { |bag|
-    if bag.heavy?
-      bag.label += " (heavy)"
-    end
-    bag
-  }
-(0..9).to_a.transduce(
