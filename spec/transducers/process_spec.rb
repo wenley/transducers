@@ -1,5 +1,3 @@
-require 'lib/transducers/process'
-
 describe Transducers::Process do
   let(:init) { instance_double(Proc) }
   let(:step) { instance_double(Proc) }

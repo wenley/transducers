@@ -1,5 +1,3 @@
-require 'lib/transducers/abstract_process'
-
 describe Transducers::AbstractProcess do
   let(:abstract_process) { described_class.new }
 

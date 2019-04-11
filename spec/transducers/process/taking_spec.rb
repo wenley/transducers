@@ -1,5 +1,3 @@
-require 'lib/transducers/process'
-
 describe Transducers::Process do
   let(:base_process) { described_class.new(init: init, step: step, completion: completion) }
   let(:init) { instance_double(Proc) }
