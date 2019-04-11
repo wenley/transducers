@@ -101,4 +101,20 @@ describe Transducers::AbstractProcess do
       end
     end
   end
+
+  describe '#then' do
+    subject { first.then(second) }
+    let(:first) { described_class.new.mapping { |v| v + 1 } }
+    let(:second) { described_class.new.mapping { |v| v + 2 } }
+    let(:base_process) { Transducers::Process.new(init: double, step: step) }
+    let(:step) { instance_double(Proc) }
+
+    let(:result) { double }
+    let(:inner_result) { double }
+
+    it 'composes' do
+      expect(step).to receive(:call).with(result, 3).and_return(inner_result)
+      expect(subject.into(base_process).step.call(result, 0)).to eq(inner_result)
+    end
+  end
 end

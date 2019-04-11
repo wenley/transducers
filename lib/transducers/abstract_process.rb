@@ -5,6 +5,7 @@ module Transducers
     def initialize(steps = [])
       @steps = steps
     end
+    attr_reader :steps
 
     def respond_to?(method_name, include_all=false)
       if Process.instance_methods.include?(method_name)
@@ -26,6 +27,10 @@ module Transducers
       @steps.reverse.reduce(base_process) do |process, (method, args, block)|
         process.send(method, *args, &block)
       end
+    end
+
+    def then(other_abstract_process)
+      AbstractProcess.new(@steps + other_abstract_process.steps)
     end
   end
 end
