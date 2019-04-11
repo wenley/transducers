@@ -23,14 +23,15 @@ module Transducers
       end
     end
 
-    def into(base_process)
-      @steps.reverse.reduce(base_process) do |process, (method, args, block)|
-        process.send(method, *args, &block)
+    def then(inner_process)
+      case inner_process
+      when AbstractProcess
+        AbstractProcess.new(@steps + inner_process.steps)
+      when Process
+        @steps.reverse.reduce(inner_process) do |process, (method, args, block)|
+          process.send(method, *args, &block)
+        end
       end
-    end
-
-    def then(other_abstract_process)
-      AbstractProcess.new(@steps + other_abstract_process.steps)
     end
   end
 end

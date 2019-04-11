@@ -30,8 +30,8 @@ describe Transducers::AbstractProcess do
     end
   end
 
-  describe '#into' do
-    subject { abstract_process.into(base_process) }
+  describe '#then with a Process' do
+    subject { abstract_process.then(base_process) }
     let(:base_process) { Transducers::Process.new(init: init, step: step) }
     let(:init) { instance_double(Proc) }
     let(:step) { instance_double(Proc) }
@@ -102,7 +102,7 @@ describe Transducers::AbstractProcess do
     end
   end
 
-  describe '#then' do
+  describe '#then with a AbstractProcess' do
     subject { first.then(second) }
     let(:first) { described_class.new.mapping { |v| v + 1 } }
     let(:second) { described_class.new.mapping { |v| v + 2 } }
@@ -114,7 +114,7 @@ describe Transducers::AbstractProcess do
 
     it 'composes' do
       expect(step).to receive(:call).with(result, 3).and_return(inner_result)
-      expect(subject.into(base_process).step.call(result, 0)).to eq(inner_result)
+      expect(subject.then(base_process).step.call(result, 0)).to eq(inner_result)
     end
   end
 end

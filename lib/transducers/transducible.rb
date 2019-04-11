@@ -14,7 +14,7 @@ module Transducers
         completion: completion_function || default_base_process.completion,
       )
 
-      process = abstract_process.into(base_process)
+      process = abstract_process.then(base_process)
 
       result = process.init.call
 
