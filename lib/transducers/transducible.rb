@@ -42,28 +42,6 @@ module Transducers
   end
 end
 
-class Array
-  include Transducers::Transducible
-
-  def self.base_process
-    Transducers::Process.new(
-      init: method(:new),
-      step: proc { |array, value| array << value },
-    )
-  end
-end
-
-class Hash
-  include Transducers::Transducible
-
-  def self.base_process
-    Transducers::Process.new(
-      init: method(:new),
-      step: proc { |hash, (key, value)| hash[key] = value; hash },
-    )
-  end
-end
-
 module Rx
   class Subject
     include Transducers::Transducible
