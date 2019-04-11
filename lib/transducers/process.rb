@@ -1,9 +1,14 @@
+require 'lib/transducers/process/mapping'
+require 'lib/transducers/process/filtering'
+require 'lib/transducers/process/taking'
 
 # Problem with this implementation:
 # - Can't start building a process until you have a base process to build on top of
 # - Function composition starts at the bottom of the stack
 module Transducers
   class Process
+    DEFAULT_COMPLETION = proc { |value| value }
+
     def initialize(init:, step:, completion: nil)
       @init = init
       @step = step
@@ -16,7 +21,12 @@ module Transducers
         @steps = []
       end
 
-      def respond_to?(method_name, args)
+      def respond_to?(method_name, include_all=false)
+        if Process.instance_methods.include?(method_name)
+          true
+        else
+          super
+        end
       end
 
       def method_missing(method_name, *args, &block)
@@ -32,46 +42,6 @@ module Transducers
           process.send(method, *args, &block)
         end
       end
-    end
-
-    DEFAULT_COMPLETION = proc { |value| value }
-
-    def mapping(&operation)
-      Process.new(
-        init: init,
-        step: proc { |collection, value| step.call(collection, yield(value)) },
-        completion: completion,
-      )
-    end
-
-    def filtering(&predicate)
-      Process.new(
-        init: init,
-        step: proc { |collection, value| if yield(value) then step.call(collection, value) else collection end },
-        completion: completion,
-      )
-    end
-
-    def taking(amount)
-      Process.new(
-        init: proc do
-          {
-            inner_result: init.call,
-            count: 0,
-          }
-        end,
-        step: proc do |result, value|
-          if result[:count] > amount
-            ReducedValue.new(result[:inner_result])
-          else
-            {
-              inner_result: step.call(result[:inner_result], value),
-              count: result[:count] + 1,
-            }
-          end
-        end,
-        completion: completion,
-      )
     end
 
     def taking_while(&predicate)
