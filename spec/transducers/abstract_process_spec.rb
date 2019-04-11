@@ -39,5 +39,66 @@ describe Transducers::AbstractProcess do
     it 'returns a real process' do
       expect(subject).to be_a(Transducers::Process)
     end
+
+    context 'with operations queued' do
+      let(:abstract_process) do
+        described_class.new.
+          filtering { |v| v % 2 == 0 }.
+          mapping { |v| v + 1 }.
+          filtering { |v| v % 3 == 0 }
+      end
+      let(:result) { [] }
+      let(:inner_result) { 'aoeu' }
+
+      before do
+        allow(step).to receive(:call).with(result, anything).and_return(inner_result)
+      end
+
+      it 'performs all the operations' do
+        expect(subject.step.call(result, 0)).to eq(result)
+        expect(subject.step.call(result, 1)).to eq(result)
+        expect(subject.step.call(result, 2)).to eq(inner_result)
+        expect(subject.step.call(result, 3)).to eq(result)
+        expect(subject.step.call(result, 4)).to eq(result)
+        expect(subject.step.call(result, 5)).to eq(result)
+        expect(subject.step.call(result, 6)).to eq(result)
+        expect(subject.step.call(result, 7)).to eq(result)
+        expect(subject.step.call(result, 8)).to eq(inner_result)
+      end
+
+      context 'when it should not pass through 'do
+        it 'does not' do
+          expect(step).to_not receive(:call)
+          expect(subject.step.call(result, 0)).to eq(result)
+          expect(subject.step.call(result, 1)).to eq(result)
+          # expect(subject.step.call(result, 2)).to eq(inner_result)
+          expect(subject.step.call(result, 3)).to eq(result)
+          expect(subject.step.call(result, 4)).to eq(result)
+          expect(subject.step.call(result, 5)).to eq(result)
+          expect(subject.step.call(result, 6)).to eq(result)
+          expect(subject.step.call(result, 7)).to eq(result)
+        end
+      end
+
+      context 'when it should pass through' do
+        context do
+          let(:value) { 2 }
+
+          it 'does' do
+            expect(step).to receive(:call).with(result, value + 1).and_return(inner_result)
+            expect(subject.step.call(result, value)).to eq(inner_result)
+          end
+        end
+
+        context do
+          let(:value) { 8 }
+
+          it 'does' do
+            expect(step).to receive(:call).with(result, value + 1).and_return(inner_result)
+            expect(subject.step.call(result, value)).to eq(inner_result)
+          end
+        end
+      end
+    end
   end
 end
