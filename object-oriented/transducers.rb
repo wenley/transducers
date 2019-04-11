@@ -2,12 +2,11 @@ require './process'
 require './transducible'
 
 module Transducers
-  ReducedValue = Struct.new(:value)
 end
 
 # Ideal usage:
 
-baggage_process = Transducers.base_process.
+baggage_process = AbstractProcess.new
   flat_mapping { |pallet| pallet.bags }.
   filtering { |bag| bag.non_food? }.
   mapping { |bag|
@@ -16,4 +15,6 @@ baggage_process = Transducers.base_process.
     end
     bag
   }
-(0..9).to_a.transduce(
+(0..9).to_a.transduce(baggage_process, output_class: Array)
+
+

@@ -1,0 +1,1 @@
+ReducedValue = Struct.new(:value)

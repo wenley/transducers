@@ -2,83 +2,64 @@
 # Problem with this implementation:
 # - Can't start building a process until you have a base process to build on top of
 # - Function composition starts at the bottom of the stack
-class Process
-  def initialize(completion: nil, step:, init:, inner_process:)
-    @step = step
-    @init = init
-    @completion = completion || DEFAULT_COMPLETION
-    @inner_process = inner_process
-  end
-  attr_reader :completion, :step, :init, :inner_process
-
-  include ExtendibleProcess
-
-  # Placeholder for
-  class BaseProcess
-    def initialize
-      @step = nil
-      @init = nil
-      @completion = DEFAULT_COMPLETION
+module Transducers
+  class Process
+    def initialize(init:, step:, completion: nil)
+      @init = init
+      @step = step
+      @completion = completion || DEFAULT_COMPLETION
     end
-    attr_reader :completion, :step, :init
+    attr_reader :init, :step, :completion
 
-    include ExtendibleProcess
+    class AbstractProcess
+      def initialize
+        @steps = []
+      end
 
-    def apply_to(seed:, step_function:, outermost: true)
-      self.init = proc { seed }
-      self.step = step_function
+      def respond_to?(method_name, args)
+      end
 
-      if outermost
-        return ConcreteProcess(self)
+      def method_missing(method_name, *args, &block)
+        if Process.instance_methods.include?(method_name)
+          @steps << [method_name, args, block]
+        else
+          super
+        end
+      end
+
+      def into(base_process)
+        @steps.reversed.reduce(base_process) do |process, (method, args, block)|
+          process.send(method, *args, &block)
+        end
       end
     end
-  end
 
-  class ConcreteProcess
-    def initialize(process)
-      @step = process.step
-      @init = process.init
-      @completion = process.completion || DEFAULT_COMPLETION
-    end
-    attr_reader :completion, :step, :init
+    DEFAULT_COMPLETION = proc { |value| value }
 
-    def apply
-
-    end
-  end
-
-  def self.base_process
-
-  end
-
-  def apply_to(seed:, step_function:, outermost: true)
-    inner_class.apply_to(seed: seed, step_function: step_function, outermost: false)
-
-    if outermost
-      return ConcreteProcess(self)
-    end
-  end
-
-  DEFAULT_COMPLETION = proc { |value| value }
-
-  module ExtendibleProcess
     def mapping(&operation)
       Process.new(
-        completion: completion,
+        init: init,
         step: proc { |collection, value| step.call(collection, yield(value)) },
+        completion: completion,
       )
     end
 
     def filtering(&predicate)
       Process.new(
-        completion: completion,
+        init: init,
         step: proc { |collection, value| if yield(value) then step.call(collection, value) else collection end },
+        completion: completion,
       )
     end
 
     def taking(amount)
       Process.new(
-        completion: completion,
+        init: proc do
+          {
+            inner_result: init.call,
+            count: 0,
+          }
+        end,
         step: proc do |result, value|
           if result[:count] > amount
             ReducedValue.new(result[:inner_result])
@@ -89,12 +70,7 @@ class Process
             }
           end
         end,
-        init: proc do
-          {
-            inner_result: init.call,
-            count: 0,
-          }
-        end,
+        completion: completion,
       )
     end
 
