@@ -9,12 +9,20 @@ module Transducers
           }
         end,
         step: proc do |result, value|
-          if result[:count] > amount
+          if result[:count] <= amount
+            next_result = step.call(result[:inner_result], value)
+          else
+            next_result = result
+          end
+
+          new_count = result[:count] + 1
+
+          if new_count >= amount
             ReducedValue.new(result[:inner_result])
           else
             {
-              inner_result: step.call(result[:inner_result], value),
-              count: result[:count] + 1,
+              inner_result: next_result,
+              count: new_count,
             }
           end
         end,
