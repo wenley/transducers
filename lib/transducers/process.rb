@@ -1,6 +1,7 @@
 require 'lib/transducers/process/mapping'
 require 'lib/transducers/process/filtering'
 require 'lib/transducers/process/taking'
+require 'lib/transducers/process/taking_while'
 
 # Problem with this implementation:
 # - Can't start building a process until you have a base process to build on top of
@@ -15,19 +16,6 @@ module Transducers
       @completion = completion || DEFAULT_COMPLETION
     end
     attr_reader :init, :step, :completion
-
-    def taking_while(&predicate)
-      Process.new(
-        completion: completion,
-        step: proc do |collection, value|
-          if yield(value)
-            step.call(collection, value)
-          else
-            ReducedValue.new(collection)
-          end
-        end,
-      )
-    end
 
     def slicing(slice_size)
       new_completion = proc do |result|
