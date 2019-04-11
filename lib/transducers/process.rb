@@ -1,3 +1,4 @@
+require 'lib/transducers/process/dropping_while'
 require 'lib/transducers/process/mapping'
 require 'lib/transducers/process/filtering'
 require 'lib/transducers/process/slicing'
@@ -17,22 +18,5 @@ module Transducers
       @completion = completion || DEFAULT_COMPLETION
     end
     attr_reader :init, :step, :completion
-
-    def dropping_while(&predicate)
-      Process.new(
-        completion: completion,
-        step: proc do |result, value|
-          if yield(value) && state[:dropping]
-            result
-          else
-            {
-              inner_result: step.call(result[:inner_result], value),
-              dropping: false,
-            }
-          end
-        end,
-        init: proc { { inner_result: init.call, dropping: true } },
-      )
-    end
   end
 end
