@@ -1,5 +1,5 @@
-require './process'
-require './reduced_value'
+require 'lib/transducers/process'
+require 'lib/transducers/reduced_value'
 
 module Transducers
   # To be included on Transducible types
@@ -9,9 +9,9 @@ module Transducers
       default_base_process = output_class.base_process
 
       base_process = Process.new(
-        init: seed || default_base_process.init,
+        init: if seed then proc { seed } else default_base_process.init end,
         step: step_function || default_base_process.step,
-        completion: completion_function || default_base_process.completion,
+        completion: default_base_process.completion || Process::DEFAULT_COMPLETION,
       )
 
       process = abstract_process.then(base_process)
@@ -33,7 +33,7 @@ module Transducers
         final_result = result
       end
 
-      process.complete(final_result)
+      process.completion.call(final_result)
     end
 
     def self.base_process
@@ -74,6 +74,51 @@ module Rx
         step: proc { |subject, value| subject.on_next(value); subject },
         completion: proc { |subject| subject.on_completed },
       )
+    end
+  end
+
+  class Observable
+    # Cannot transduce to other types because of the Async nature of Observables
+    # Won't know inner/base process until Observable is subscribed to
+    def transduce(abstract_process)
+      AnonymousObservable.new do |observer|
+        wrapped_observer = Observable.process_to_observer(
+          abstract_process.then(
+            Observable.observer_to_process(observer),
+          ),
+          on_error: observer.on_error,
+        )
+
+        subscribe(wrapped_observer)
+      end
+    end
+
+    def to_a2
+      subscribe(Observable.process_to_observer(Array.base_process))
+    end
+
+    def self.observer_to_process(observer)
+      Transducers::Process.new(
+        init: proc { observer },
+        step: proc do |observer, value|
+          begin
+            observer.on_next(value)
+            observer
+          rescue => e
+            observer.on_error(e)
+            observer
+          end
+        end,
+        completion: proc { |observer| observer.on_completed },
+      )
+    end
+
+    def self.process_to_observer(process, on_error: nil)
+      Observer.configure do |o|
+        o.on_next(&process.step)
+        o.on_error(&on_error) if on_error
+        o.on_completed(&process.completion)
+      end
     end
   end
 end
