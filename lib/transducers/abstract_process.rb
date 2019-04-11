@@ -31,6 +31,8 @@ module Transducers
         @steps.reverse.reduce(inner_process) do |process, (method, args, block)|
           process.send(method, *args, &block)
         end
+      else
+        raise ArgumentError, "Cannot chain into #{inner_process.class.name}"
       end
     end
   end

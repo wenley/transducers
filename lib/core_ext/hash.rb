@@ -1,5 +1,4 @@
 class Hash
-  # If collecting into
   def self.base_process
     Transducers::Process.new(
       init: method(:new),
