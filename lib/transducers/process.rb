@@ -16,34 +16,6 @@ module Transducers
     end
     attr_reader :init, :step, :completion
 
-    class AbstractProcess
-      def initialize
-        @steps = []
-      end
-
-      def respond_to?(method_name, include_all=false)
-        if Process.instance_methods.include?(method_name)
-          true
-        else
-          super
-        end
-      end
-
-      def method_missing(method_name, *args, &block)
-        if Process.instance_methods.include?(method_name)
-          @steps << [method_name, args, block]
-        else
-          super
-        end
-      end
-
-      def into(base_process)
-        @steps.reversed.reduce(base_process) do |process, (method, args, block)|
-          process.send(method, *args, &block)
-        end
-      end
-    end
-
     def taking_while(&predicate)
       Process.new(
         completion: completion,
