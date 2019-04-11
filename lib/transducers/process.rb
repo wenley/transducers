@@ -1,5 +1,6 @@
 require 'lib/transducers/process/mapping'
 require 'lib/transducers/process/filtering'
+require 'lib/transducers/process/slicing'
 require 'lib/transducers/process/taking'
 require 'lib/transducers/process/taking_while'
 
@@ -16,36 +17,6 @@ module Transducers
       @completion = completion || DEFAULT_COMPLETION
     end
     attr_reader :init, :step, :completion
-
-    def slicing(slice_size)
-      new_completion = proc do |result|
-        if state[:wip].count > 0
-          inner_result = step.call(result[:inner_result], state[:wip])
-        else
-          inner_result = result[:inner_result]
-        end
-        completion.call(inner_result)
-      end
-
-      new_step = proc do |result, value|
-        result[:wip] << value
-
-        if state[:wip].count == slice_size
-          {
-            inner_result: step.call(result[:inner_result], result[:wip]),
-            wip: [],
-          }
-        else
-          result
-        end
-      end
-
-      Process.new(
-        init: proc { { inner_result: init.call, wip: [] } },
-        step: new_step,
-        completion: new_completion,
-      )
-    end
 
     def dropping_while(&predicate)
       Process.new(
